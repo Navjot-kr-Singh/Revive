@@ -18,7 +18,8 @@
     "demo:incident": "tsx scripts/demo-incident.ts",
     "benchmark:10k": "tsx scripts/benchmark-events.ts 10000",
     "benchmark:50k": "tsx scripts/benchmark-events.ts 50000",
-    "benchmark:100k": "tsx scripts/benchmark-events.ts 100000"
+    "benchmark:100k": "tsx scripts/benchmark-events.ts 100000",
+    "evaluate:ai": "tsx scripts/evaluate-investigation.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.8.2",

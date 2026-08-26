@@ -20,6 +20,8 @@ import {
   auditEvents,
   incidentSignals,
   incidents,
+  investigations,
+  aiRuns,
 } from './schema';
 import { DEFAULT_POLICY, EVENT_TYPES, CASE_TYPES, CASE_PRIORITY } from '../../lib/constants';
 import { toMinorUnits } from '../../lib/money';
@@ -31,6 +33,8 @@ export async function runSeed() {
 
   // ─── 1. Clean existing demo data in correct FK order ───────────
   await db.delete(auditEvents);
+  await db.delete(aiRuns);
+  await db.delete(investigations);
   await db.delete(incidentSignals);
   await db.delete(revenueCases);
   await db.delete(incidents);

@@ -9,3 +9,4 @@ export { recoveryDecisions, recoveryActions, recoveryOutcomes } from './decision
 export { policies } from './policies';
 export { auditEvents } from './audit';
 export { incidents, incidentSignals } from './incidents';
+export { investigations, aiRuns } from './investigations';
