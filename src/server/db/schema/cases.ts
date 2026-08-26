@@ -31,6 +31,7 @@ export const revenueCases = pgTable('revenue_cases', {
   customerContacts: integer('customer_contacts').default(0),
   escalated: boolean('escalated').default(false),
   escalationReason: varchar('escalation_reason', { length: 255 }),
+  incidentId: uuid('incident_id'),
   experimentId: uuid('experiment_id'),
   experimentGroup: varchar('experiment_group', { length: 20 }),
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
@@ -40,6 +41,7 @@ export const revenueCases = pgTable('revenue_cases', {
 }, (table) => [
   index('idx_revenue_cases_merchant_status').on(table.merchantId, table.status),
   index('idx_revenue_cases_payment').on(table.paymentId),
+  index('idx_revenue_cases_incident').on(table.incidentId),
 ]);
 
 // ─── Revenue Case Signals ──────────────────────────

@@ -14,7 +14,11 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/server/db/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "demo:incident": "tsx scripts/demo-incident.ts",
+    "benchmark:10k": "tsx scripts/benchmark-events.ts 10000",
+    "benchmark:50k": "tsx scripts/benchmark-events.ts 50000",
+    "benchmark:100k": "tsx scripts/benchmark-events.ts 100000"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.8.2",

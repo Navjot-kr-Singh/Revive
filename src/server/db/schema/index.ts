@@ -8,3 +8,4 @@ export { interventionOptions } from './interventions';
 export { recoveryDecisions, recoveryActions, recoveryOutcomes } from './decisions';
 export { policies } from './policies';
 export { auditEvents } from './audit';
+export { incidents, incidentSignals } from './incidents';

@@ -6,7 +6,7 @@
  */
 
 import { getDb } from '@/server/db';
-import { paymentEvents, revenueCases } from '@/server/db/schema';
+import { paymentEvents, revenueCases, auditEvents } from '@/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { createHash } from 'crypto';
 import { PROCESSING_STATUS, EVENT_TYPES, CASE_TYPES, CASE_PRIORITY, DEFAULT_POLICY } from '@/lib/constants';
@@ -217,3 +217,161 @@ async function processPaymentFailed(input: IngestEventInput): Promise<string> {
 
   return revenueCase.id;
 }
+
+export interface BatchIngestResult {
+  totalReceived: number;
+  newEventsCount: number;
+  duplicateEventsCount: number;
+  casesCreatedCount: number;
+  caseIds: string[];
+}
+
+/**
+ * Bulk ingest an array of payment/revenue events efficiently.
+ * Optimized for high-throughput batch operations and synthetic benchmarks.
+ */
+export async function ingestEventBatch(
+  inputs: IngestEventInput[],
+  chunkSize: number = 500
+): Promise<BatchIngestResult> {
+  const db = getDb();
+  if (inputs.length === 0) {
+    return {
+      totalReceived: 0,
+      newEventsCount: 0,
+      duplicateEventsCount: 0,
+      casesCreatedCount: 0,
+      caseIds: [],
+    };
+  }
+
+  let totalNew = 0;
+  let totalDups = 0;
+  let totalCasesCreated = 0;
+  const createdCaseIds: string[] = [];
+
+  // Process in chunks to prevent SQL parameter limits
+  for (let i = 0; i < inputs.length; i += chunkSize) {
+    const chunk = inputs.slice(i, i + chunkSize);
+
+    // 1. Deduplicate within the chunk
+    const uniqueInChunkMap = new Map<string, IngestEventInput>();
+    for (const input of chunk) {
+      const key = `${input.source}:${input.sourceEventId}`;
+      if (!uniqueInChunkMap.has(key)) {
+        uniqueInChunkMap.set(key, input);
+      } else {
+        totalDups++;
+      }
+    }
+    const uniqueInChunk = Array.from(uniqueInChunkMap.values());
+
+    // 2. Fetch existing sourceEventIds from DB for this chunk
+    const existingEvents = await db
+      .select({ sourceEventId: paymentEvents.sourceEventId, source: paymentEvents.source })
+      .from(paymentEvents)
+      .where(
+        and(
+          eq(paymentEvents.merchantId, chunk[0].merchantId),
+        )
+      );
+
+    const existingSet = new Set(existingEvents.map((e) => `${e.source}:${e.sourceEventId}`));
+
+    const newInputs = uniqueInChunk.filter(
+      (inp) => !existingSet.has(`${inp.source}:${inp.sourceEventId}`)
+    );
+    totalDups += uniqueInChunk.length - newInputs.length;
+    totalNew += newInputs.length;
+
+    if (newInputs.length === 0) continue;
+
+    // 3. Prepare bulk paymentEvents insert
+    const eventsToInsert = newInputs.map((inp) => {
+      const payloadHash = computePayloadHash(inp.payload);
+      return {
+        merchantId: inp.merchantId,
+        eventType: inp.eventType,
+        eventId: inp.eventId,
+        source: inp.source,
+        sourceEventId: inp.sourceEventId,
+        payload: inp.payload,
+        payloadHash,
+        processingStatus: PROCESSING_STATUS.PROCESSED,
+        processedAt: new Date(),
+        receivedAt: inp.timestamp ? new Date(inp.timestamp) : new Date(),
+      };
+    });
+
+    await db.insert(paymentEvents).values(eventsToInsert);
+
+    // 4. Identify payment.failed events and batch insert revenue cases
+    const failedInputs = newInputs.filter((inp) => inp.eventType === EVENT_TYPES.PAYMENT_FAILED);
+
+    if (failedInputs.length > 0) {
+      const casesToInsert = failedInputs.map((inp) => {
+        const payload = inp.payload as Record<string, unknown>;
+        const rawPaymentId = payload.payment_id as string | undefined;
+        const rawOrderId = payload.order_id as string | undefined;
+        const rawCustomerId = payload.customer_id as string | undefined;
+        const amountMinor = Number(payload.amount_minor ?? 0);
+        const currency = (payload.currency as string) || 'INR';
+        const failureReason = payload.failure_reason as string | undefined;
+        const failureCode = payload.failure_code as string | undefined;
+
+        return {
+          merchantId: inp.merchantId,
+          paymentId: toValidUuidOrNull(rawPaymentId),
+          customerId: toValidUuidOrNull(rawCustomerId),
+          orderId: toValidUuidOrNull(rawOrderId),
+          caseType: CASE_TYPES.PAYMENT_FAILURE,
+          status: 'new',
+          priority: determinePriority(amountMinor),
+          amountAtRiskMinor: amountMinor,
+          currency,
+          failureReason,
+          failureCode,
+          createdAt: inp.timestamp ? new Date(inp.timestamp) : new Date(),
+        };
+      });
+
+      const createdCases = await db.insert(revenueCases).values(casesToInsert).returning({ id: revenueCases.id });
+      totalCasesCreated += createdCases.length;
+
+      for (const c of createdCases) {
+        createdCaseIds.push(c.id);
+      }
+
+      // 5. Append audit events in bulk
+      const auditsToInsert = createdCases.map((c, idx) => {
+        const inp = failedInputs[idx];
+        const payload = inp.payload as Record<string, unknown>;
+        return {
+          merchantId: inp.merchantId,
+          entityType: 'revenue_case',
+          entityId: c.id,
+          eventType: EVENT_TYPES.REVENUE_CASE_CREATED,
+          actor: 'system_bulk_ingestion',
+          data: {
+            amountAtRiskMinor: payload.amount_minor,
+            failureCode: payload.failure_code,
+            paymentMethod: payload.payment_method,
+            bank: payload.bank,
+          },
+          createdAt: inp.timestamp ? new Date(inp.timestamp) : new Date(),
+        };
+      });
+
+      await db.insert(auditEvents).values(auditsToInsert);
+    }
+  }
+
+  return {
+    totalReceived: inputs.length,
+    newEventsCount: totalNew,
+    duplicateEventsCount: totalDups,
+    casesCreatedCount: totalCasesCreated,
+    caseIds: createdCaseIds,
+  };
+}
+
