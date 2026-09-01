@@ -10,6 +10,7 @@ export default function DashboardLayout({
     { href: '/dashboard', label: 'Control Room', icon: '◉' },
     { href: '/dashboard/cases', label: 'Cases', icon: '◆' },
     { href: '/dashboard/incidents', label: 'Incidents', icon: '▲' },
+    { href: '/dashboard/review', label: 'Human Review', icon: '◬' },
     { href: '/dashboard/simulator', label: 'Simulator', icon: '◈' },
     { href: '/dashboard/experiments', label: 'Experiments', icon: '◇' },
     { href: '/dashboard/audit', label: 'Audit', icon: '◻' },
@@ -47,7 +48,19 @@ export default function DashboardLayout({
 
         {/* User */}
         <div className="p-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
-          <UserButton />
+          {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY ? (
+            <UserButton />
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xs font-bold text-emerald-400">
+                AE
+              </div>
+              <div className="text-xs truncate">
+                <p className="font-semibold text-slate-200 truncate">demo@revive.dev</p>
+                <p className="text-[10px] text-emerald-400/80">Acme Electronics</p>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 

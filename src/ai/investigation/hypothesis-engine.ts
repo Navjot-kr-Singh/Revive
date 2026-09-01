@@ -121,17 +121,18 @@ export class HypothesisEngine {
       });
     }
 
-    // 5. PAYMENT_METHOD_DEGRADATION (Specific Rail Failure)
+    // 5. BANK_PAYMENT_METHOD_DEGRADATION (Bank-Specific Rail Failure, e.g. HDFC Bank UPI)
     const isSingleRailFailing =
       allDescriptions.includes('rail failing') ||
       allDescriptions.includes('rail normal') ||
       allDescriptions.includes('remain healthy') ||
       allDescriptions.includes('upi only');
-    if (isSingleRailFailing) {
+
+    if (hasBankConcentration && isSingleRailFailing) {
       candidates.push({
-        hypothesisId: 'hyp_rail_degradation',
-        hypothesis: CANDIDATE_HYPOTHESES.PAYMENT_METHOD_DEGRADATION,
-        description: `Degradation isolated specifically to ${targetBank} ${targetRail.toUpperCase()} processing switch. Alternate rails remain operational.`,
+        hypothesisId: 'hyp_bank_rail_degradation',
+        hypothesis: CANDIDATE_HYPOTHESES.BANK_PAYMENT_METHOD_DEGRADATION,
+        description: `Degradation isolated specifically to ${targetBank} ${targetRail.toUpperCase()} processing switch. Alternate rails and peer banks remain operational.`,
         priorScore: 0.35,
         evidenceScore: 0.65,
         contradictionScore: 0.0,
@@ -142,7 +143,23 @@ export class HypothesisEngine {
       });
     }
 
-    // 6. BANK_DEGRADATION (All Rails Failing for Target Bank)
+    // 6. PAYMENT_METHOD_DEGRADATION (Systemic Multi-Bank Rail Failure)
+    if (!hasBankConcentration && isSingleRailFailing) {
+      candidates.push({
+        hypothesisId: 'hyp_rail_degradation',
+        hypothesis: CANDIDATE_HYPOTHESES.PAYMENT_METHOD_DEGRADATION,
+        description: `Systemic degradation across ${targetRail.toUpperCase()} rail affecting multiple banking switches.`,
+        priorScore: 0.35,
+        evidenceScore: 0.65,
+        contradictionScore: 0.0,
+        coverageScore: 0.95,
+        finalScore: 0.98,
+        supportingEvidenceIds: evidence.map((e) => e.evidenceId),
+        contradictingEvidenceIds: [],
+      });
+    }
+
+    // 7. BANK_DEGRADATION (All Rails Failing for Target Bank)
     if (hasBankConcentration) {
       const bankSupporting = evidence.map((e) => e.evidenceId);
       const isBankWide = allDescriptions.includes('failing equally') || allDescriptions.includes('all payment rails');
@@ -151,7 +168,7 @@ export class HypothesisEngine {
       candidates.push({
         hypothesisId: 'hyp_bank_degradation',
         hypothesis: CANDIDATE_HYPOTHESES.BANK_DEGRADATION,
-        description: `Upstream degradation at ${targetBank} core switch or authorization API.`,
+        description: `Upstream bank-wide degradation at ${targetBank} core switch or authorization API.`,
         priorScore: 0.30,
         evidenceScore: 0.58,
         contradictionScore: isSingleRailFailing ? 0.25 : 0.0,

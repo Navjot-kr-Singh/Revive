@@ -17,6 +17,11 @@ import {
   payments,
   paymentEvents,
   revenueCases,
+  revenueCaseSignals,
+  interventionOptions,
+  recoveryDecisions,
+  recoveryActions,
+  recoveryOutcomes,
   auditEvents,
   incidentSignals,
   incidents,
@@ -36,6 +41,11 @@ export async function runSeed() {
   await db.delete(aiRuns);
   await db.delete(investigations);
   await db.delete(incidentSignals);
+  await db.delete(recoveryOutcomes);
+  await db.delete(recoveryActions);
+  await db.delete(recoveryDecisions);
+  await db.delete(interventionOptions);
+  await db.delete(revenueCaseSignals);
   await db.delete(revenueCases);
   await db.delete(incidents);
   await db.delete(paymentEvents);

@@ -140,4 +140,48 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   GBP: '£',
 };
 
+/**
+ * Convert probability (0..1) to integer basis points (0..10000).
+ * e.g., 0.38 → 3800 bps
+ */
+export function probabilityToBps(probability: number): number {
+  const bounded = Math.max(0, Math.min(1, probability));
+  return new Decimal(bounded).times(10000).round().toNumber();
+}
+
+/**
+ * Convert basis points (0..10000) to decimal probability (0..1).
+ */
+export function bpsToProbability(bps: number): number {
+  const bounded = Math.max(0, Math.min(10000, bps));
+  return new Decimal(bounded).dividedBy(10000).toNumber();
+}
+
+/**
+ * Calculate expected recovery in minor units using basis points:
+ * floor(amountMinor * probabilityBps / 10000)
+ */
+export function calculateExpectedRecoveryMinor(amountMinor: number, probabilityBps: number): number {
+  const boundedBps = Math.max(0, Math.min(10000, probabilityBps));
+  return new Decimal(amountMinor).times(boundedBps).dividedBy(10000).floor().toNumber();
+}
+
+/**
+ * Calculate Expected Net Value (EV) in minor units:
+ * EV = expectedRecoveryMinor - actionCostMinor - frictionPenaltyMinor - riskPenaltyMinor
+ */
+export function calculateExpectedNetValueMinor(
+  expectedRecoveryMinor: number,
+  actionCostMinor: number,
+  frictionPenaltyMinor: number,
+  riskPenaltyMinor: number
+): number {
+  return new Decimal(expectedRecoveryMinor)
+    .minus(actionCostMinor)
+    .minus(frictionPenaltyMinor)
+    .minus(riskPenaltyMinor)
+    .toNumber();
+}
+
 export { Decimal };
+

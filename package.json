@@ -19,7 +19,15 @@
     "benchmark:10k": "tsx scripts/benchmark-events.ts 10000",
     "benchmark:50k": "tsx scripts/benchmark-events.ts 50000",
     "benchmark:100k": "tsx scripts/benchmark-events.ts 100000",
-    "evaluate:ai": "tsx scripts/evaluate-investigation.ts"
+    "benchmark:scale": "tsx scripts/benchmark-scale.ts",
+    "benchmark:latency": "tsx scripts/benchmark-latency-audit.ts",
+    "evaluate:ai": "tsx scripts/evaluate-investigation.ts",
+    "evaluate:recovery": "tsx scripts/evaluate-recovery.ts",
+    "evaluate:100k": "tsx scripts/evaluate-100k-recovery.ts",
+    "evaluate:ablation": "tsx scripts/evaluate-ablation.ts",
+    "evaluate:calibration": "tsx scripts/evaluate-calibration.ts",
+    "demo:recovery": "tsx scripts/demo-recovery.ts",
+    "demo:final": "tsx scripts/demo-final.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.8.2",

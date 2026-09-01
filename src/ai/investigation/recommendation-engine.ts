@@ -14,6 +14,7 @@ export class RecommendationEngine {
     const citedEvidenceIds = topHypothesis.supportingEvidenceIds;
 
     switch (primaryDiagnosis) {
+      case CANDIDATE_HYPOTHESES.BANK_PAYMENT_METHOD_DEGRADATION:
       case CANDIDATE_HYPOTHESES.PAYMENT_METHOD_DEGRADATION:
         recommendations.push({
           action: RECOVERY_RECOMMENDATIONS.ALTERNATIVE_PAYMENT_METHOD,

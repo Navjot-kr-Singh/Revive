@@ -49,7 +49,7 @@ export function generateBenchmarkDataset(): BenchmarkCase[] {
 
   const categories = [
     { name: 'bank_degradation', count: 20, cause: CANDIDATE_HYPOTHESES.BANK_DEGRADATION },
-    { name: 'payment_method_degradation', count: 20, cause: CANDIDATE_HYPOTHESES.PAYMENT_METHOD_DEGRADATION },
+    { name: 'bank_payment_method_degradation', count: 20, cause: CANDIDATE_HYPOTHESES.BANK_PAYMENT_METHOD_DEGRADATION },
     { name: 'gateway_degradation', count: 15, cause: CANDIDATE_HYPOTHESES.GATEWAY_DEGRADATION },
     { name: 'regional_degradation', count: 10, cause: CANDIDATE_HYPOTHESES.REGIONAL_DEGRADATION },
     { name: 'traffic_spike', count: 10, cause: CANDIDATE_HYPOTHESES.TRAFFIC_SPIKE },
@@ -72,7 +72,7 @@ export function generateBenchmarkDataset(): BenchmarkCase[] {
       let railDesc = `All payment rails (UPI, Card, Netbanking) failing equally for ${bank}.`;
       let failCodeDesc = `95% of failures exhibit BANK_TIMEOUT response code.`;
 
-      if (cat.name === 'payment_method_degradation') {
+      if (cat.name === 'bank_payment_method_degradation') {
         railDesc = `${rail.toUpperCase()} rail failing with 24.5% error rate while Card and Netbanking rails remain healthy at 2.1%.`;
       } else if (cat.name === 'gateway_degradation') {
         bankDesc = `Multiple banks (HDFC, ICICI, Axis, SBI) failing simultaneously across acquiring gateway routing.`;

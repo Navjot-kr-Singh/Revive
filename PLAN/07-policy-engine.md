@@ -1,182 +1,41 @@
-# REVIVE — Policy Engine
+# REVIVE — Policy Engine Architecture & Specification
 
-## 1. Overview
-
-The Policy Engine is a **deterministic rule evaluator** that sits between the Decision Engine and the Action Executor. It ensures all recovery actions comply with merchant-configured boundaries and safety constraints.
-
-**The Policy Engine NEVER uses LLM inference.** It is pure deterministic logic.
-
----
-
-## 2. Policy Rules
-
-### 2.1 Retry Limits
-```
-IF retry_count >= MAX_RETRY_ATTEMPTS (default: 2)
-  → BLOCK action: RETRY_PAYMENT
-  → reason: "Maximum retry attempts reached"
-```
-
-### 2.2 Customer Contact Limits
-```
-IF customer_contacts >= MAX_CUSTOMER_CONTACTS (default: 2)
-  → BLOCK actions: SEND_PAYMENT_LINK, CUSTOMER_NOTIFICATION
-  → reason: "Maximum customer contacts reached"
-```
-
-### 2.3 High-Value Threshold
-```
-IF amount_at_risk > HIGH_VALUE_THRESHOLD (default: ₹50,000)
-  → ESCALATE to human review
-  → reason: "High-value transaction requires human approval"
-```
-
-### 2.4 Automated Recovery Limit
-```
-IF amount_at_risk > MAX_AUTOMATED_RECOVERY_AMOUNT (default: ₹1,00,000)
-  → BLOCK automated execution
-  → reason: "Amount exceeds automated recovery limit"
-```
-
-### 2.5 Low Recovery Probability
-```
-IF recovery_probability < MIN_RECOVERY_PROBABILITY (default: 0.10)
-  → BLOCK action: NO_ACTION recommended
-  → reason: "Recovery probability below minimum threshold"
-```
-
-### 2.6 Low Model Confidence
-```
-IF model_confidence < MIN_CONFIDENCE (default: 0.30)
-  → ESCALATE to human review
-  → reason: "Model confidence below minimum threshold"
-```
-
-### 2.7 Negative Expected Value
-```
-IF expected_net_value <= 0
-  → BLOCK action: NO_ACTION recommended
-  → reason: "Expected net value is non-positive"
-```
-
-### 2.8 Merchant Action Allowlist
-```
-IF action NOT IN merchant.allowed_actions
-  → BLOCK action
-  → reason: "Action not permitted by merchant policy"
-```
-
-### 2.9 Discount Limits
-```
-IF discount_percent > MAX_DISCOUNT_PERCENT (default: 5%)
-  → BLOCK action
-  → reason: "Discount exceeds maximum allowed percentage"
-```
-
-### 2.10 Case Expiry
-```
-IF case.created_at + CASE_TTL < NOW()
-  → BLOCK action, transition to EXPIRED
-  → reason: "Case has expired"
-```
+## 1. Core Principle
+> **AI RECOMMENDS. POLICY DECIDES. EXECUTOR ACTS. MEASUREMENT PROVES.**
+>
+> The AI/LLM must NEVER directly execute any financial mutation, retry, routing change, or payment link generation. All candidate interventions must pass through the deterministic Policy Engine before execution.
 
 ---
 
-## 3. Policy Evaluation Flow
+## 2. The 12 Deterministic Policy Rules
+Every rule evaluates independently and produces a structured result containing pass/fail, threshold, actual value, and explanation.
 
-```
-Input: (case, proposed_action, decision_context)
-
-1. Load merchant's active policy
-2. Evaluate ALL rules against input
-3. Collect results:
-   - rules_evaluated: [list of all rules checked]
-   - rules_triggered: [list of rules that fired]
-4. Determine outcome:
-   - If ANY rule blocks → BLOCKED
-   - If ANY rule escalates → ESCALATED  
-   - If no rules fire → APPROVED
-5. Record policy_evaluation to database
-6. If BLOCKED or ESCALATED → create audit_event
-7. Return PolicyResult
-```
-
----
-
-## 4. Policy Result
-
-```typescript
-interface PolicyResult {
-  result: 'approved' | 'blocked' | 'escalated';
-  policy_id: string;
-  policy_version: string;
-  rules_evaluated: PolicyRuleResult[];
-  rules_triggered: PolicyRuleResult[];
-  blocking_reason?: string;
-  escalation_reason?: string;
-}
-
-interface PolicyRuleResult {
-  rule_id: string;
-  rule_name: string;
-  condition: string;
-  result: 'pass' | 'block' | 'escalate';
-  details: Record<string, any>;
-}
-```
+| Rule Name | Scope / Target | Action |
+|---|---|---|
+| `MAX_RETRY_COUNT` | Direct Retries | Caps retry budget to prevent customer card blocking (e.g. max 2 retries) |
+| `MAX_CUSTOMER_CONTACTS` | Links & Notifications | Limits outward notifications to avoid customer fatigue (e.g. max 1 contact) |
+| `MAX_ACTION_AMOUNT` | Automated Interventions | Caps maximum monetary value for automated recovery (e.g. ₹50,000) |
+| `MIN_RECOVERY_PROBABILITY` | Statistical Viability | Ensures action satisfies statistical recovery floor (e.g. $\ge 15\%$) |
+| `MIN_EXPECTED_VALUE` | Economic Viability | Enforces positive net expected return ($EV > 0$) |
+| `MAX_CUSTOMER_FRICTION` | Customer Experience | Caps allowable customer friction (e.g. `MEDIUM`) |
+| `HIGH_VALUE_ESCALATION` | High-Value Transactions | Escalates transactions $> ₹50,000$ to human review queue |
+| `LOW_CONFIDENCE_ESCALATION` | Diagnostic Safety | Escalates when AI root cause confidence is below safety threshold (e.g. $< 85\%$) |
+| `INCIDENT_SEVERITY_LIMIT` | Systemic Outages | Prohibits retrying degraded rails during active `CRITICAL` outages |
+| `ACTION_COOLDOWN` | Temporal Throttling | Enforces minimum wait between attempts (e.g. $\ge 60$ seconds) |
+| `MERCHANT_ACTION_ALLOWLIST` | Merchant Governance | Restricts actions to merchant-enabled allowlists |
+| `DAILY_RECOVERY_BUDGET` | Portfolio Limits | Caps cumulative daily automated recovery amount |
 
 ---
 
-## 5. Default Policy Configuration
+## 3. Policy Output & Cryptographic Hashing
+The Policy Evaluator produces:
+- `ALLOW`: Permitted to execute.
+- `DENY`: Hard constraint violation; engine evaluates next-best candidate.
+- `ESCALATE`: Requires human clearance in `/dashboard/review`.
 
-```json
-{
-  "policy_version": "1.0.0",
-  "max_retry_attempts": 2,
-  "max_customer_contacts": 2,
-  "max_discount_percent": 5,
-  "max_automated_recovery_minor": 10000000,
-  "high_value_threshold_minor": 5000000,
-  "min_recovery_probability": 0.10,
-  "min_confidence": 0.30,
-  "case_ttl_hours": 72,
-  "allowed_actions": [
-    "no_action",
-    "retry_payment",
-    "send_payment_link",
-    "alternative_payment_method",
-    "customer_notification",
-    "human_escalation"
-  ]
-}
-```
+Each merchant policy is versioned (`POLICY-DEFAULT-V1`, `POLICY-ENTERPRISE-V2`) and hashed using SHA-256 over its canonical JSON representation.
 
 ---
 
-## 6. Audit Requirements
-
-Every policy evaluation MUST record:
-- Which rules were evaluated
-- Which rules triggered
-- What the outcome was
-- Why the action was blocked/escalated (if applicable)
-
-This creates a complete audit trail for compliance.
-
----
-
-## 7. Testing Requirements
-
-| Test | Description |
-|------|-------------|
-| Retry limit blocks retry | After 2 retries, retry action is blocked |
-| Contact limit blocks notification | After 2 contacts, notification is blocked |
-| High value escalates | Amount above threshold triggers escalation |
-| Low probability blocks | Below minimum probability, no action taken |
-| Low confidence escalates | Below minimum confidence, escalation triggered |
-| Negative EV blocks | Non-positive expected value blocks action |
-| Allowlist blocks | Action not in allowlist is blocked |
-| No rules triggered approves | Clean action is approved |
-| Multiple rules triggered | Most restrictive outcome wins |
-| Policy evaluation recorded | Database record created for every evaluation |
-| Audit event created | Blocked/escalated actions create audit events |
+## 4. Pre-Execution Policy Mutation Defense
+Immediately prior to execution in `ActionExecutor.executeDecision()`, the executor re-evaluates the merchant's live policy. If policy settings changed between decision creation and execution, execution is **BLOCKED** with reason `policy_changed_since_decision` and recorded in the audit trail.
