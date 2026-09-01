@@ -52,7 +52,7 @@ Before starting, make sure you have free accounts on:
 4. Select **Node.js** / **PostgreSQL connection string** with **Connection Pooling (Recommended)**.
 5. Your connection string looks like this:
    ```text
-   postgresql://neondb_owner:npg_cp5SWq3GrXMV@ep-mute-glitter-ayy95qtj-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+   postgresql://<username>:<password>@<neon-pooler-hostname>/neondb?sslmode=require&channel_binding=require
    ```
 
 ---
@@ -93,23 +93,23 @@ DATABASE_URL="your-neon-database-url-here" npm run db:seed
 - **Install Command**: `npm install` (Default)
 
 ### C. Add Environment Variables in Vercel
-Scroll down to the **Environment Variables** section in Vercel. Copy and paste the following key-value pairs:
+Scroll down to the **Environment Variables** section in Vercel. Copy and paste the following key-value pairs (using your own credentials from `.env.local`):
 
 | Variable Key | Value / Instructions |
 |---|---|
-| `DATABASE_URL` | `postgresql://neondb_owner:npg_cp5SWq3GrXMV@ep-mute-glitter-ayy95qtj-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
-| `DIRECT_URL` | `postgresql://neondb_owner:npg_cp5SWq3GrXMV@ep-mute-glitter-ayy95qtj-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
+| `DATABASE_URL` | `postgresql://<user>:<password>@<neon-pooler-host>/neondb?sslmode=require&channel_binding=require` |
+| `DIRECT_URL` | `postgresql://<user>:<password>@<neon-pooler-host>/neondb?sslmode=require&channel_binding=require` |
 | `DEMO_MODE` | `true` |
 | `NODE_ENV` | `production` |
 | `AI_PROVIDER` | `deterministic` |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_test_bHVja3ktZm94aG91bmQtMTUuY2xlcmsuYWNjb3VudHMuZGV2JA` |
-| `CLERK_SECRET_KEY` | `sk_test_Qld0iYCvF9xa826onADcxZIJUfb748cAG1ym6JPjlK` |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_test_...` *(From Clerk Dashboard or your .env.local)* |
+| `CLERK_SECRET_KEY` | `sk_test_...` *(From Clerk Dashboard or your .env.local)* |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` |
 | `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
 | `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | `/dashboard` |
 | `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | `/dashboard` |
-| `RAZORPAY_KEY_ID` | `rzp_test_RtQW1Rmgl5jqFr` |
-| `RAZORPAY_KEY_SECRET` | `Gkw3sUr6LwnOgBUpNSV1k5an` |
+| `RAZORPAY_KEY_ID` | `rzp_test_...` *(From Razorpay Dashboard or your .env.local)* |
+| `RAZORPAY_KEY_SECRET` | `...` *(From Razorpay Dashboard or your .env.local)* |
 | `NEXT_PUBLIC_APP_URL` | `https://your-project-name.vercel.app` *(Update after Vercel assigns your URL)* |
 
 ### D. Click Deploy
