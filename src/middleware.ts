@@ -17,7 +17,7 @@ const isClerkConfigured = !!(
 
 
 export default async function middleware(request: NextRequest) {
-  if (!isClerkConfigured) {
+  if (!isClerkConfigured || process.env.DEMO_MODE === 'true') {
     // Demo mode: no auth enforcement
     return NextResponse.next();
   }
