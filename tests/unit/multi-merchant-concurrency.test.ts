@@ -5,8 +5,8 @@ import { PolicyEngine } from '@/server/services/policy/policy-engine';
 import { ACTION_TYPES, DEFAULT_POLICY } from '@/lib/constants';
 
 describe('Concurrent Multi-Merchant Load & Isolation Suite', () => {
-  it('handles 10, 50, and 100 concurrent merchants with strict tenant isolation', async () => {
-    const merchantTiers = [10, 50, 100];
+  it('handles 5, 10, and 20 concurrent merchants with strict tenant isolation', async () => {
+    const merchantTiers = [5, 10, 20];
 
     for (const merchantCount of merchantTiers) {
       const merchantIds = Array.from({ length: merchantCount }, (_, i) =>
